@@ -9,15 +9,15 @@ headers = {
 
 kv = {
     "keyword": "情趣内衣",
-    "page":"2"
+    "page":"10"
 }
 
 map = {}
 
 res = []
 
-def get_all():
-    html = requests.get("https://search.jd.com/Search", headers=headers, params=kv)
+def get_all(url_map):
+    html = requests.get("https://search.jd.com/Search", headers=headers, params=url_map)
     bs = BeautifulSoup(html.text, 'html.parser')
 
     list = bs.find_all("div", id="J_goodsList")[0]
@@ -31,34 +31,36 @@ def get_all():
 
 
 def get_infor():
-    get_all()
-    t_map = {}
-    for k, v in map.items():
-        time.sleep(0.3)
-        html = requests.get(k, headers=headers)
+    for i in range(0, 5):
+        kv['page'] = i
+        get_all(kv)
+        t_map = {}
+        for k, v in map.items():
+            time.sleep(0.1)
+            html = requests.get(k, headers=headers)
 
-        bs = BeautifulSoup(html.text, "html.parser")
-        tag = bs.find_all('div', class_='p-parameter')[0]
-        pic = bs.find_all('div', class_='J-addcart-mini EDropdown')[0]
+            bs = BeautifulSoup(html.text, "html.parser")
+            tag = bs.find_all('div', class_='p-parameter')[0]
+            pic = bs.find_all('div', class_='J-addcart-mini EDropdown')[0]
 
-        band = tag.find('li').attrs['title']
-        pic_url = pic.find('img').attrs['src']
+            band = tag.find('li').attrs['title']
+            pic_url = pic.find('img').attrs['src']
 
-        list = tag.find_all('li')
+            list = tag.find_all('li')
 
-        str = ''
+            str = ''
 
-        for i in list:
-            if (i.string != None):
-                str += i.string
+            for i in list:
+                if (i.string != None):
+                    str += i.string
 
-        t_map['band'] = band
-        t_map['info'] = str
-        t_map['url'] = k
-        t_map['price'] = v
-        t_map['pic'] = pic_url
-        print(t_map.items())
-        res.append(t_map)
+            t_map['band'] = band
+            t_map['info'] = str
+            t_map['url'] = k
+            t_map['price'] = v
+            t_map['pic'] = pic_url
+            print(t_map.items())
+            res.append(t_map)
 
 if __name__ == "__main__":
     get_infor()
