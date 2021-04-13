@@ -8,7 +8,8 @@ headers = {
 }
 
 kv = {
-    "keyword": "震动棒"
+    "keyword": "情趣内衣",
+    "page":"2"
 }
 
 map = {}
@@ -33,13 +34,15 @@ def get_infor():
     get_all()
     t_map = {}
     for k, v in map.items():
-        time.sleep(1)
+        time.sleep(0.3)
         html = requests.get(k, headers=headers)
 
         bs = BeautifulSoup(html.text, "html.parser")
         tag = bs.find_all('div', class_='p-parameter')[0]
+        pic = bs.find_all('div', class_='J-addcart-mini EDropdown')[0]
 
         band = tag.find('li').attrs['title']
+        pic_url = pic.find('img').attrs['src']
 
         list = tag.find_all('li')
 
@@ -53,6 +56,7 @@ def get_infor():
         t_map['info'] = str
         t_map['url'] = k
         t_map['price'] = v
+        t_map['pic'] = pic_url
         print(t_map.items())
         res.append(t_map)
 
