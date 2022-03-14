@@ -1,5 +1,8 @@
+import json.decoder
 import logging
+import time
 
+import pymysql
 import requests
 
 from micro_blog.DTO import Comments, User
@@ -15,13 +18,18 @@ def get_mid_list():
     sql = "select mid from status group by mid"
     rows = cursor.execute(sql)
     result = cursor.fetchmany(rows)
-    return result
+    res = set()
+    for i in result:
+        res.add(i[0])
+    return res
 
-def insert_comment(bid, created_ad, like_count, text, source, user):
-    sql = "insert into `comment` (`bid`, `created_ad`, `like_count`, `text`, `source`, `user`) values ('%s', '%s', '%s', '%s', '%s', '%s')" \
-          % (bid, created_ad, like_count, text, source, user)
+
+def insert_comment(cid, bid, created_at, like_count, text, source, user):
+    sql = "insert into `comment` (`cid`, `bid`, `created_at`, `like_count`, `text`, `source`, `user`) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s')" \
+          % (cid, bid, created_at, like_count, text, source, user)
     cursor.execute(sql)
     conn.commit()
+
 
 def request_comment_url():
     mid_list = get_mid_list()
@@ -31,7 +39,11 @@ def request_comment_url():
             response = requests.get(comment_url, headers=headers)
             if response.status_code != 200:
                 continue
-            json_res = response.json()
+            try:
+                json_res = response.json()
+            except json.decoder.JSONDecodeError as e:
+                logging.error(e)
+                continue
             if json_res:
                 if not json_res.get("data") or len(json_res.get("data")) == 0:
                     break
@@ -43,6 +55,14 @@ def request_comment_url():
                     comment = Comments(k.get("id"), k.get("bid"), k.get("created_at"),
                                        k.get("like_count"), k.get("text"), k.get("source"), user.id)
                     logging.info(comment.__dict__.items())
-                    insert_comment(comment.id, comment.bid, comment.created_at, comment.like_count, )
+                    try:
+                        insert_comment(comment.id, comment.bid, comment.created_at, comment.like_count, comment.text,
+                                   comment.source, comment.user)
+                    except:
+                        logging.error("insert error")
+                        continue
+                    time.sleep(1)
+
 
 if __name__ == "__main__":
+    request_comment_url()
