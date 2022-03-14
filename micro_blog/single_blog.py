@@ -40,7 +40,7 @@ def request_and_explain_blog():
                     if i.get('scheme') and CONTAIN_STRING in i.get('scheme'):
                         logging.info(i.get('scheme'))
                         blog_url.add(i.get('scheme'))
-                time.sleep(0.2)
+                time.sleep(0.5)
         except requests.ConnectionError as e:
             logging.error(e)
     rds.setex(BLOG_URL_LIST, 60 * 60 * 6, json.dumps(list(blog_url)))

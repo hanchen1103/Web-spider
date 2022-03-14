@@ -36,9 +36,9 @@ def insert_user(user_id, avatar_hd, description, follow_count, followers_count, 
     conn.commit()
 
 
-def insert_page_info(content1, content2, page_url, page_title, play_count, title, type, urls):
-    sql = "insert into `page_info` (`content1`, `content2`, `page_url`, `page_title`, `play_count`, `title`, `type`, `urls`) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" \
-          % (content1, content2, page_url, page_title, play_count, title, type, urls)
+def insert_page_info(mid, content1, content2, page_url, page_title, play_count, title, type, urls):
+    sql = "insert into `page_info` (`mid`, `content1`, `content2`, `page_url`, `page_title`, `play_count`, `title`, `type`, `urls`) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" \
+          % (mid, content1, content2, page_url, page_title, play_count, title, type, urls)
     cursor.execute(sql)
     conn.commit()
 
@@ -75,8 +75,11 @@ def request_blog_and_explain():
                                 user.gender, user.profile_url, user.screen_name)
                 p = items.get("page_info")
                 if p:
-                    page_info = Page_info(p.get("content1"), p.get("content2"), p.get("page_url"), p.get("page_title"),
-                                          p.get("play_count"), p.get("title"), p.get("type"), p.get("urls"))
+                    p_str = ""
+                    if p.get("urls"):
+                        p_str = json.dumps(p.get("urls"))
+                    page_info = Page_info(items.get("mid"), p.get("content1"), p.get("content2"), p.get("page_url"), p.get("page_title"),
+                                          p.get("play_count"), p.get("title"), p.get("type"), p_str)
                     logging.info(page_info.__dict__.items())
                     insert_page_info(page_info.content1, page_info.content2, page_info.page_url, page_info.page_title,
                                      page_info.play_count, page_info.title, page_info.type, page_info.urls)

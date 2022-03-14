@@ -15,7 +15,8 @@ class Status:
 
 
 class Page_info:
-    def __init__(self, content1, content2, page_url, page_title, play_count, title, type, urls):
+    def __init__(self, mid, content1, content2, page_url, page_title, play_count, title, type, urls):
+        self.mid = mid
         self.content1 = content1
         self.content2 = content2
         self.page_url = page_url
