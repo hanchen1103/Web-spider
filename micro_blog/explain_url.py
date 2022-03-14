@@ -1,10 +1,16 @@
+import json
 import logging
+import time
 
 import requests
 
 from micro_blog.get_request import dump_json_get_url
 
+import redis
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+rds = redis.StrictRedis(host='127.0.0.1', port=6379, db=3)
 
 headers = {
     'Accept': 'application/json, text/plain, */*',
@@ -14,6 +20,8 @@ headers = {
 }
 
 MAX_PAGE = 200
+
+XHR_URL_LIST_KEY = 'topic-to-blog-url'
 
 
 def get_xhr_url_base():
@@ -28,6 +36,7 @@ def get_xhr_url_base():
     return xhr_request
 
 
+# 因为请求量较大可以考虑获取后缓存
 def get_xhr_url():
     api_list = get_xhr_url_base()
     all_url = []
@@ -48,8 +57,9 @@ def get_xhr_url():
                         all_url.append(current_url)
             except requests.ConnectionError as e:
                 logging.error(e)
+            time.sleep(0.2)
+    # 缓存时间设置为6小时过期
+    rds.setex('XHR_URL_LIST', 60 * 60 * 6, json.dumps(all_url))
     return all_url
 
 
-if __name__ == "__main__":
-    get_xhr_url()
