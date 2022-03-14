@@ -1,6 +1,8 @@
-class status:
-    def __init__(self, bid, id, mid, comments_count, created_at, edit_at, raw_text, user, page_info, pics):
+class Status:
+    def __init__(self, bid, id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, raw_text, user, page_info, pics):
         self.bid = bid
+        self.attitudes_count = attitudes_count
+        self.reposts_count = reposts_count
         self.comments_count = comments_count
         self.created_at = created_at
         self.edit_at = edit_at
@@ -12,7 +14,7 @@ class status:
         self.mid = mid
 
 
-class page_info:
+class Page_info:
     def __init__(self, content1, content2, page_url, page_title, play_count, title, type, urls):
         self.content1 = content1
         self.content2 = content2
@@ -24,7 +26,7 @@ class page_info:
         self.urls = urls
 
 
-class user:
+class User:
     def __init__(self, id, avatar_hd, description, follow_count, followers_count,
                  gender, profile_url, screen_name):
         self.id = id
@@ -37,7 +39,7 @@ class user:
         self.screen_name = screen_name
 
 
-class comments:
+class Comments:
     def __init__(self, id, bid, created_at, like_count, text, source, user):
         self.id = id
         self.bid = bid

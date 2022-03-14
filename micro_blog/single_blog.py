@@ -1,7 +1,6 @@
 import json
 import logging
 import time
-
 import requests
 
 from micro_blog.explain_url import rds, get_xhr_url, XHR_URL_LIST_KEY, headers
@@ -15,7 +14,7 @@ CONTAIN_STRING = 'status'
 
 def get_url_list():
     data = rds.get(XHR_URL_LIST_KEY)
-    if data is None or data == '':
+    if data is None:
         get_xhr_url()
     url_list = json.loads(data)
     return url_list

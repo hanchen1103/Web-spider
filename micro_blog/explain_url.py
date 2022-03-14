@@ -1,12 +1,10 @@
 import json
 import logging
 import time
-
 import requests
+import redis
 
 from micro_blog.get_request import dump_json_get_url
-
-import redis
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -61,5 +59,3 @@ def get_xhr_url():
     # 缓存时间设置为6小时过期
     rds.setex('XHR_URL_LIST', 60 * 60 * 6, json.dumps(all_url))
     return all_url
-
-
