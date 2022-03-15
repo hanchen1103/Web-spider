@@ -4,6 +4,7 @@ import time
 
 import pymysql
 import requests
+from pymysql.converters import escape_string
 
 from micro_blog.DTO import Comments, User
 from micro_blog.mblog_spider import cursor, conn
@@ -51,10 +52,11 @@ def request_comment_url():
         explain_comment_list(json_res)
         while json_res is not None and json_res.get("data"):
             max_id = json_res.get("data").get("max_id")
-            if max_id is None:
+            if max_id is None or max_id == '0':
                 break
             next_comment_url = comment_next_url.format(i, i, max_id)
             next_response = requests.get(next_comment_url, headers=headers)
+            logging.info(next_comment_url + "\n" + response.text)
             if next_response.status_code != 200 or next_response.json() is None:
                 break
             explain_comment_list(next_response.json())
@@ -69,7 +71,7 @@ def explain_comment_list(json_res):
         user = User(u.get("id"), u.get('avatar_hd'), u.get('description'), u.get('follow_count'),
                     u.get("followers_count"), u.get('gender'), u.get('profile_url'), u.get('screen_name'))
         comment = Comments(k.get("id"), k.get("bid"), k.get("created_at"),
-                           k.get("like_count"), k.get("text"), k.get("source"), user.id)
+                           k.get("like_count"), escape_string(k.get("text")), k.get("source"), user.id)
         logging.info(comment.__dict__.items())
         try:
             insert_comment(comment.id, comment.bid, comment.created_at, comment.like_count, comment.text,

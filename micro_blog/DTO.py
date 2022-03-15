@@ -1,5 +1,5 @@
 class Status:
-    def __init__(self, bid, id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, raw_text, user, page_info, pics):
+    def __init__(self, bid, id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, text, raw_text, user, page_info, pics):
         self.bid = bid
         self.attitudes_count = attitudes_count
         self.reposts_count = reposts_count
@@ -7,6 +7,7 @@ class Status:
         self.created_at = created_at
         self.edit_at = edit_at
         self.raw_text = raw_text if raw_text is not None else ' '
+        self.text = text if text is not None else ' '
         self.user = user
         self.page_info = page_info if page_info is not None else ' '
         self.pics = pics if pics is not None else ' '

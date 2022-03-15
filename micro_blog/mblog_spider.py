@@ -44,10 +44,11 @@ def insert_page_info(mid, content1, content2, page_url, page_title, play_count, 
     conn.commit()
 
 
-def insert_status(bid, w_id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, raw_text, user,
+def insert_status(bid, w_id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, text, raw_text,
+                  user,
                   page_info, pic_str):
-    sql = "insert into `status` (`bid`, `w_id`, `mid`, `attitudes_count`, `reposts_count`, `comments_count`, `created_at`, `edit_at`, `raw_text`, `user`, `page_info`, `pic_str`) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s','%s', '%s', '%s', '%s')" \
-          % (bid, w_id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, raw_text, user,
+    sql = "insert into `status` (`bid`, `w_id`, `mid`, `attitudes_count`, `reposts_count`, `comments_count`, `created_at`, `edit_at`, `text`, `raw_text`, `user`, `page_info`, `pic_str`) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s','%s', '%s', '%s', '%s', '%s')" \
+          % (bid, w_id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, text, raw_text, user,
              page_info, pic_str)
     cursor.execute(sql)
     conn.commit()
@@ -72,18 +73,23 @@ def request_blog_and_explain():
                     user = User(u.get("id"), u.get('avatar_hd'), u.get('description'), u.get('follow_count'),
                                 u.get("followers_count"), u.get('gender'), u.get('profile_url'), u.get('screen_name'))
                     logging.info(user.__dict__.items())
-                    insert_user(user.id, user.avatar_hd, escape_string(user.description), user.follow_count, user.followers_count,
+                    insert_user(user.id, user.avatar_hd, escape_string(user.description), user.follow_count,
+                                user.followers_count,
                                 user.gender, user.profile_url, escape_string(user.screen_name))
                 p = items.get("page_info")
                 if p:
                     p_str = ""
                     if p.get("urls"):
                         p_str = json.dumps(p.get("urls"))
-                    page_info = Page_info(items.get("mid"), p.get("content1"), p.get("content2"), p.get("page_url"), p.get("page_title"),
+                    page_info = Page_info(items.get("mid"), p.get("content1"), p.get("content2"), p.get("page_url"),
+                                          p.get("page_title"),
                                           p.get("play_count"), p.get("title"), p.get("type"), p_str)
                     logging.info(page_info.__dict__.items())
-                    insert_page_info(page_info.mid, escape_string(page_info.content1), escape_string(page_info.content2), page_info.page_url, escape_string(page_info.page_title),
-                                     page_info.play_count, escape_string(page_info.title), page_info.type, page_info.urls)
+                    insert_page_info(page_info.mid, escape_string(page_info.content1),
+                                     escape_string(page_info.content2), page_info.page_url,
+                                     escape_string(page_info.page_title),
+                                     page_info.play_count, escape_string(page_info.title), page_info.type,
+                                     page_info.urls)
                 pics = items.get("pics")
                 pic_str = ' '
                 if pics:
@@ -94,11 +100,13 @@ def request_blog_and_explain():
                     pifo_mid = p.get("mid")
                 status = Status(items.get("bid"), items.get("id"), items.get("mid"), items.get("attitudes_count"),
                                 items.get("reposts_count"), items.get("comments_count"), items.get("created_at"),
-                                items.get("edit_at"), items.get("raw_text"), user.id, pifo_mid, pic_str)
+                                items.get("edit_at"), items.get("text"), items.get("raw_text"), user.id, pifo_mid,
+                                pic_str)
                 logging.info(status.__dict__.items())
                 insert_status(status.bid, status.id, status.mid, status.attitudes_count,
                               status.reposts_count, status.comments_count, status.created_at, status.edit_at,
-                              escape_string(status.raw_text), status.user, escape_string(status.page_info), escape_string(status.pics))
+                              escape_string(status.text), escape_string(status.raw_text), status.user,
+                              escape_string(status.page_info), escape_string(status.pics))
         except requests.ConnectionError as e:
             logging.error(e)
         time.sleep(3)
