@@ -57,5 +57,5 @@ def get_xhr_url():
                 logging.error(e)
             time.sleep(0.2)
     # 缓存时间设置为6小时过期
-    rds.setex('XHR_URL_LIST', 60 * 60 * 6, json.dumps(all_url))
-    return all_url
+    rds.setex(XHR_URL_LIST_KEY, 60 * 60 * 6, json.dumps(all_url))
+

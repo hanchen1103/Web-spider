@@ -16,7 +16,7 @@ def get_url_list():
     data = rds.get(XHR_URL_LIST_KEY)
     if data is None:
         get_xhr_url()
-    url_list = json.loads(data)
+    url_list = json.loads(rds.get(XHR_URL_LIST_KEY))
     return url_list
 
 
@@ -40,7 +40,7 @@ def request_and_explain_blog():
                     if i.get('scheme') and CONTAIN_STRING in i.get('scheme'):
                         logging.info(i.get('scheme'))
                         blog_url.add(i.get('scheme'))
-                time.sleep(0.5)
+                time.sleep(2)
         except requests.ConnectionError as e:
             logging.error(e)
     rds.setex(BLOG_URL_LIST, 60 * 60 * 6, json.dumps(list(blog_url)))

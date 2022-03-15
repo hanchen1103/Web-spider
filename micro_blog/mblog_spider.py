@@ -4,6 +4,7 @@ import pymysql
 import re
 import time
 import requests
+from pymysql.converters import escape_string
 
 from micro_blog.DTO import User, Page_info, Status
 from micro_blog.explain_url import rds, headers
@@ -22,7 +23,7 @@ def get_blog_url():
     blog_list = rds.get(BLOG_URL_LIST)
     if blog_list is None:
         request_and_explain_blog()
-    return json.loads(blog_list)
+    return json.loads(rds.get(BLOG_URL_LIST))
 
 
 def get_bid(url):
@@ -71,8 +72,8 @@ def request_blog_and_explain():
                     user = User(u.get("id"), u.get('avatar_hd'), u.get('description'), u.get('follow_count'),
                                 u.get("followers_count"), u.get('gender'), u.get('profile_url'), u.get('screen_name'))
                     logging.info(user.__dict__.items())
-                    insert_user(user.id, user.avatar_hd, user.description, user.follow_count, user.followers_count,
-                                user.gender, user.profile_url, user.screen_name)
+                    insert_user(user.id, user.avatar_hd, escape_string(user.description), user.follow_count, user.followers_count,
+                                user.gender, user.profile_url, escape_string(user.screen_name))
                 p = items.get("page_info")
                 if p:
                     p_str = ""
@@ -81,23 +82,26 @@ def request_blog_and_explain():
                     page_info = Page_info(items.get("mid"), p.get("content1"), p.get("content2"), p.get("page_url"), p.get("page_title"),
                                           p.get("play_count"), p.get("title"), p.get("type"), p_str)
                     logging.info(page_info.__dict__.items())
-                    insert_page_info(page_info.content1, page_info.content2, page_info.page_url, page_info.page_title,
-                                     page_info.play_count, page_info.title, page_info.type, page_info.urls)
+                    insert_page_info(page_info.mid, escape_string(page_info.content1), escape_string(page_info.content2), page_info.page_url, escape_string(page_info.page_title),
+                                     page_info.play_count, escape_string(page_info.title), page_info.type, page_info.urls)
                 pics = items.get("pics")
-                pic_str = ''
+                pic_str = ' '
                 if pics:
                     for k in pics:
                         pic_str += k.get("url") + "\n"
+                pifo_mid = " "
+                if p:
+                    pifo_mid = p.get("mid")
                 status = Status(items.get("bid"), items.get("id"), items.get("mid"), items.get("attitudes_count"),
                                 items.get("reposts_count"), items.get("comments_count"), items.get("created_at"),
-                                items.get("edit_at"), items.get("raw_text"), user.id, page_info.title, pic_str)
+                                items.get("edit_at"), items.get("raw_text"), user.id, pifo_mid, pic_str)
                 logging.info(status.__dict__.items())
                 insert_status(status.bid, status.id, status.mid, status.attitudes_count,
                               status.reposts_count, status.comments_count, status.created_at, status.edit_at,
-                              status.raw_text, status.user, status.page_info, status.pics)
+                              escape_string(status.raw_text), status.user, escape_string(status.page_info), escape_string(status.pics))
         except requests.ConnectionError as e:
             logging.error(e)
-        time.sleep(2)
+        time.sleep(3)
 
 
 if __name__ == "__main__":

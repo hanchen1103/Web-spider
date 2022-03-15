@@ -9,7 +9,9 @@ from micro_blog.DTO import Comments, User
 from micro_blog.mblog_spider import cursor, conn
 from spider_jingdong import headers
 
-comment_base_url = 'https://m.weibo.cn/comments/hotflow?id={}&mid={}&max_id_type=0&page={}'
+comment_base_url = 'https://m.weibo.cn/comments/hotflow?id={}&mid={}&max_id_type=0'
+
+comment_next_url = 'https://m.weibo.cn/comments/hotflow?id={}&mid={}&max_id={}&max_id_type=0'
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -34,34 +36,48 @@ def insert_comment(cid, bid, created_at, like_count, text, source, user):
 def request_comment_url():
     mid_list = get_mid_list()
     for i in mid_list:
-        for j in range(1, 100):
-            comment_url = comment_base_url.format(i, i, j)
-            response = requests.get(comment_url, headers=headers)
-            if response.status_code != 200:
-                continue
-            try:
-                json_res = response.json()
-            except json.decoder.JSONDecodeError as e:
-                logging.error(e)
-                continue
-            if json_res:
-                if not json_res.get("data") or len(json_res.get("data")) == 0:
-                    break
-                comment_list = json_res.get("data").get("data")
-                for k in comment_list:
-                    u = k.get("user")
-                    user = User(u.get("id"), u.get('avatar_hd'), u.get('description'), u.get('follow_count'),
-                                u.get("followers_count"), u.get('gender'), u.get('profile_url'), u.get('screen_name'))
-                    comment = Comments(k.get("id"), k.get("bid"), k.get("created_at"),
-                                       k.get("like_count"), k.get("text"), k.get("source"), user.id)
-                    logging.info(comment.__dict__.items())
-                    try:
-                        insert_comment(comment.id, comment.bid, comment.created_at, comment.like_count, comment.text,
-                                   comment.source, comment.user)
-                    except:
-                        logging.error("insert error")
-                        continue
-                    time.sleep(1)
+        comment_url = comment_base_url.format(i, i)
+        response = requests.get(comment_url, headers=headers)
+        if response.status_code != 200:
+            continue
+        logging.info(comment_url + "\n" + response.text)
+        try:
+            json_res = response.json()
+        except json.decoder.JSONDecodeError as e:
+            logging.error(comment_url + e)
+            continue
+        if json_res is None:
+            continue
+        explain_comment_list(json_res)
+        while json_res is not None and json_res.get("data"):
+            max_id = json_res.get("data").get("max_id")
+            if max_id is None:
+                break
+            next_comment_url = comment_next_url.format(i, i, max_id)
+            next_response = requests.get(next_comment_url, headers=headers)
+            if next_response.status_code != 200 or next_response.json() is None:
+                break
+            explain_comment_list(next_response.json())
+
+
+def explain_comment_list(json_res):
+    if not json_res.get("data") or len(json_res.get("data")) == 0:
+        return
+    comment_list = json_res.get("data").get("data")
+    for k in comment_list:
+        u = k.get("user")
+        user = User(u.get("id"), u.get('avatar_hd'), u.get('description'), u.get('follow_count'),
+                    u.get("followers_count"), u.get('gender'), u.get('profile_url'), u.get('screen_name'))
+        comment = Comments(k.get("id"), k.get("bid"), k.get("created_at"),
+                           k.get("like_count"), k.get("text"), k.get("source"), user.id)
+        logging.info(comment.__dict__.items())
+        try:
+            insert_comment(comment.id, comment.bid, comment.created_at, comment.like_count, comment.text,
+                           comment.source, comment.user)
+        except:
+            logging.error("insert error")
+            continue
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
