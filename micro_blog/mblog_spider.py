@@ -47,7 +47,7 @@ def insert_page_info(mid, content1, content2, page_url, page_title, play_count, 
 def insert_status(bid, w_id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, text, raw_text,
                   user,
                   page_info, pic_str):
-    sql = "insert into `status` (`bid`, `w_id`, `mid`, `attitudes_count`, `reposts_count`, `comments_count`, `created_at`, `edit_at`, `text`, `raw_text`, `user`, `page_info`, `pic_str`) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s','%s', '%s', '%s', '%s', '%s')" \
+    sql = "insert into `status` (`bid`, `w_id`, `mid`, `attitudes_count`, `reposts_count`, `comments_count`, `created_at`, `edit_at`, `m_text`, `raw_text`, `user`, `page_info`, `pic_str`) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s','%s', '%s', '%s', '%s', '%s')" \
           % (bid, w_id, mid, attitudes_count, reposts_count, comments_count, created_at, edit_at, text, raw_text, user,
              page_info, pic_str)
     cursor.execute(sql)
