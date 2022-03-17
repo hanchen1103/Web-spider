@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 
@@ -44,24 +45,30 @@ def request_comment_url():
         if rds.get(comment_url) is not None:
             continue
         rds.setex(comment_url, 60 * 60 * 10, '1')
-        response = get_response(comment_url, headers=proxy_cloucd_headers, retry_count=1)
-        if response and response.json():
-            json_res = response.json()
-            explain_comment_list(json_res)
-            while json_res is not None and json_res.get("data"):
-                max_id = json_res.get("data").get("max_id")
-                if max_id is None or max_id == '0':
-                    break
-                next_comment_url = comment_next_url.format(i, i, max_id)
-                if rds.get(next_comment_url) is not None:
-                    continue
-                rds.setex(next_comment_url, 60 * 60 * 10, '1')
-                next_response = get_response(next_comment_url, headers=proxy_cloucd_headers, retry_count=1)
-                logging.info(next_comment_url + "\n" + response.text)
-                if next_response and next_response.json():
-                    explain_comment_list(next_response.json())
+        try:
+            response = get_response(comment_url, headers=proxy_cloucd_headers, retry_count=1)
+            if response and response.json():
+                json_res = response.json()
+                explain_comment_list(json_res)
+                # 需要登录而且不稳定，也许需要变化cookie
+                while json_res is not None and json_res.get("data") and json_res.get("data").get("max_id") != 0:
+                    max_id = json_res.get("data").get("max_id")
+                    if max_id is None or max_id == '0':
+                        break
+                    next_comment_url = comment_next_url.format(i, i, max_id)
+                    if rds.get(next_comment_url) is not None:
+                        continue
+                    rds.setex(next_comment_url, 60 * 60 * 10, '1')
+                    next_response = get_response(next_comment_url, headers=proxy_cloucd_headers, retry_count=1)
+                    logging.info(next_comment_url + "\n" + next_response.text)
+                    if next_response and next_response.json():
+                        json_res = next_response.json()
+                        explain_comment_list(json_res)
+                    time.sleep(0.6)
                 time.sleep(0.6)
-            time.sleep(0.6)
+        except json.decoder.JSONDecodeError as e:
+            logging.error(e)
+            continue
 
 
 def explain_comment_list(json_res):
