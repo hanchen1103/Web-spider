@@ -1,7 +1,9 @@
 import json
 import logging
 import random
+import threading
 import time
+from threading import Thread
 
 import redis
 import requests
@@ -69,11 +71,54 @@ def get_dragonfly_ip():
         data_list = response.get("data")
         for i in data_list:
             ip = i.get("host") + ':' + i.get("port")
-            print(ip)
-            print(verify_ip_useful(ip))
+            logging.info(ip)
+            # verify_ip_useful(ip)
+            rds.zadd(ip_proxy_list_key, {ip: int(time.time())})
 
-def replenish_ip_pool():
+
+class replenish_ip_pool(threading.Thread):
+
+    def __init__(self, threadID, name, delay):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.delay = delay
     
-if __name__ == "__main__":
+    def run(self):
+        while True:
+            if rds.zcard(ip_proxy_list_key) < 100:
+                logging.info("time to get ip")
+                get_dragonfly_ip()
+                time.sleep(10)
 
-    get_dragonfly_ip()
+
+class clear_invaild_ip(threading.Thread):
+
+    def __init__(self, threadID, name, delay):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.delay = delay
+
+    def run(self):
+        while True:
+            list = rds.zrangebyscore(ip_proxy_list_key, -10000000000, 10000000000)
+            for i in list:
+                if int(rds.zscore(ip_proxy_list_key, i)) + 60 < int(time.time()):
+                    rds.zrem(ip_proxy_list_key, i)
+                    logging.info("delete invaild ip is:" + i)
+
+
+# async def main():
+#     L = await asyncio.gather(
+#         replenish_ip_pool(),
+#         clear_invaild_ip(),
+#     )
+#     print(L)
+
+
+if __name__ == "__main__":
+    thread1 = clear_invaild_ip(1, "Thread-1", 1)
+    thread2 = replenish_ip_pool(2, "Thread-2", 2)
+    thread2.start()
+    thread1.start()
