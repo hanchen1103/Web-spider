@@ -9,6 +9,7 @@ import redis
 import requests
 import urllib3
 
+from micro_blog import config
 from micro_blog.config import bin_ip_url, proxy_cloucd_headers, get_ip_url, proxy_url, ip_proxy_list_key, dragonfly_ip
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -50,28 +51,31 @@ def request_ip():
 
 
 def get_ip():
-    ip_list = rds.zrangebyscore(ip_proxy_list_key, 0, int(time.time() - 120))
+    ip_list = rds.zrangebyscore(ip_proxy_list_key, int(time.time()) - 120, time.time())
     if not ip_list or len(ip_list) == 0:
         return '127.0.0.1:1087'
     logging.info(ip_list)
     return random.choice(ip_list)
 
 
-def get_response(url, headers, retry_count=6):
-    logging.info("retry times is:" + str(-1 * (retry_count - 6)))
-    if retry_count == 0:
+def get_response(url, headers, retry_count):
+    logging.info("retry times is:" + str(retry_count))
+    if retry_count == config.retry_count:
         return
     try:
         ip_proxy = get_ip_proxy()
         logging.info("request {} ip address is: {}".format(url, str(ip_proxy)))
-        response = requests.get(url, headers=headers, proxies=ip_proxy, verify=False)
+        response = requests.get(url, headers=headers, proxies=ip_proxy, verify=False, timeout=5)
         if response.status_code == 200:
+            logging.info(response.text)
             return response
-        get_response(url, headers, retry_count - 1)
-    except requests.ConnectionError and requests.exceptions.ConnectTimeout and requests.exceptions.ReadTimeout and \
-           urllib3.exceptions.ConnectTimeoutError and requests.exceptions.ProxyError as e:
+        else:
+            return get_response(url, headers, retry_count + 1)
+    except (requests.ConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.ProxyError
+            , requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as e:
         logging.error(e)
-        get_response(url, headers, retry_count - 1)
+        return get_response(url, headers, retry_count + 1)
+
 
 def get_ip_proxy():
     ip = get_ip()
@@ -82,14 +86,20 @@ def get_ip_proxy():
 
 
 def get_dragonfly_ip():
-    response = requests.get(dragonfly_ip, headers=proxy_cloucd_headers, timeout=3).json()
-    if response:
-        data_list = response.get("data")
-        for i in data_list:
-            ip = i.get("host") + ':' + i.get("port")
-            logging.info(ip)
-            # verify_ip_useful(ip)
-            rds.zadd(ip_proxy_list_key, {ip: int(time.time())})
+    try:
+        response = requests.get(dragonfly_ip, headers=proxy_cloucd_headers).json()
+        if response:
+            data_list = response.get("data")
+            for i in data_list:
+                ip = i.get("host") + ':' + i.get("port")
+                logging.info(ip)
+                # verify_ip_useful(ip)
+                rds.zadd(ip_proxy_list_key, {ip: int(time.time())})
+    except (requests.ConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.ProxyError
+            , requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as e:
+        logging.error(e)
+        time.sleep(12)
+        get_dragonfly_ip()
 
 
 class replenish_ip_pool(threading.Thread):
@@ -102,7 +112,7 @@ class replenish_ip_pool(threading.Thread):
 
     def run(self):
         while True:
-            if rds.zcard(ip_proxy_list_key) < 100:
+            if rds.zcard(ip_proxy_list_key) < 200:
                 logging.info("time to get ip")
                 get_dragonfly_ip()
                 time.sleep(15)
