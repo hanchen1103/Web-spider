@@ -7,6 +7,7 @@ from threading import Thread
 
 import redis
 import requests
+import urllib3
 
 from micro_blog.config import bin_ip_url, proxy_cloucd_headers, get_ip_url, proxy_url, ip_proxy_list_key, dragonfly_ip
 
@@ -49,13 +50,28 @@ def request_ip():
 
 
 def get_ip():
-    ip = rds.lindex(ip_proxy_list_key, random.randint(1, rds.llen(ip_proxy_list_key) - 1))
-    while ip and rds.get(str(ip).strip('\'')) is None:
-        logging.info("redis delete ip is: " + ip)
-        rds.lrem(ip_proxy_list_key, 1, ip)
-        ip = rds.lindex(ip_proxy_list_key, random.randint(0, rds.llen(ip_proxy_list_key) - 1))
-    return ip.strip('\'')
+    ip_list = rds.zrangebyscore(ip_proxy_list_key, 0, int(time.time() - 120))
+    if not ip_list or len(ip_list) == 0:
+        return '127.0.0.1:1087'
+    logging.info(ip_list)
+    return random.choice(ip_list)
 
+
+def get_response(url, headers, retry_count=6):
+    logging.info("retry times is:" + str(-1 * (retry_count - 6)))
+    if retry_count == 0:
+        return
+    try:
+        ip_proxy = get_ip_proxy()
+        logging.info("request {} ip address is: {}".format(url, str(ip_proxy)))
+        response = requests.get(url, headers=headers, proxies=ip_proxy, verify=False)
+        if response.status_code == 200:
+            return response
+        get_response(url, headers, retry_count - 1)
+    except requests.ConnectionError and requests.exceptions.ConnectTimeout and requests.exceptions.ReadTimeout and \
+           urllib3.exceptions.ConnectTimeoutError and requests.exceptions.ProxyError as e:
+        logging.error(e)
+        get_response(url, headers, retry_count - 1)
 
 def get_ip_proxy():
     ip = get_ip()
@@ -83,13 +99,13 @@ class replenish_ip_pool(threading.Thread):
         self.threadID = threadID
         self.name = name
         self.delay = delay
-    
+
     def run(self):
         while True:
             if rds.zcard(ip_proxy_list_key) < 100:
                 logging.info("time to get ip")
                 get_dragonfly_ip()
-                time.sleep(10)
+                time.sleep(15)
 
 
 class clear_invaild_ip(threading.Thread):
@@ -103,10 +119,13 @@ class clear_invaild_ip(threading.Thread):
     def run(self):
         while True:
             list = rds.zrangebyscore(ip_proxy_list_key, -10000000000, 10000000000)
+            if len(list) < 30:
+                time.sleep(1)
             for i in list:
-                if int(rds.zscore(ip_proxy_list_key, i)) + 60 < int(time.time()):
+                if int(rds.zscore(ip_proxy_list_key, i)) + 120 < int(time.time()):
                     rds.zrem(ip_proxy_list_key, i)
                     logging.info("delete invaild ip is:" + i)
+            time.sleep(30)
 
 
 # async def main():
