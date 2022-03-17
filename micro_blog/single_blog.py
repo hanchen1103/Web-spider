@@ -3,8 +3,9 @@ import logging
 import time
 import requests
 
+from micro_blog.config import proxy_cloucd_headers
 from micro_blog.explain_url import rds, get_xhr_url, XHR_URL_LIST_KEY, headers
-from micro_blog.get_ip import get_ip_proxy
+from micro_blog.get_ip import get_response
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -26,13 +27,9 @@ def request_and_explain_blog():
     blog_url = set()
     for _ in xhr_list:
         try:
-            proxy = get_ip_proxy()
-            logging.info("request ip is: " + str(proxy))
-            response = requests.get(_, headers=headers)
-            if response.status_code != 200:
-                continue
-            json_res = response.json()
-            if json_res:
+            response = get_response(_, headers=proxy_cloucd_headers, retry_count=0)
+            if response and response.json:
+                json_res = response.json()
                 items = json_res.get('data').get('cards')
                 for i in items:
                     if i.get('card_group'):
@@ -43,8 +40,8 @@ def request_and_explain_blog():
                     if i.get('scheme') and CONTAIN_STRING in i.get('scheme'):
                         logging.info(i.get('scheme'))
                         blog_url.add(i.get('scheme'))
-                time.sleep(0.2)
-        except requests.ConnectionError and requests.exceptions.ReadTimeout as e:
+                time.sleep(1.5)
+        except requests.ConnectionError as e:
             logging.error(e)
     rds.setex(BLOG_URL_LIST, 60 * 60 * 16, json.dumps(list(blog_url)))
     return blog_url

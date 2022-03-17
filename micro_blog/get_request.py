@@ -3,7 +3,7 @@ import logging
 import requests
 
 from micro_blog.config import local_proxies
-from micro_blog.get_ip import get_ip_proxy
+from micro_blog.get_ip import get_ip_proxy, get_response
 
 base_url = 'https://m.weibo.cn/api/container/getIndex?containerid=100103type%3D38%26q%3D%E8%BF%94%E4%B9%A1%E5%B0%B1' \
            '%E4%B8%9A%26t%3D0&page_type=searchall&page='
@@ -29,25 +29,15 @@ def get_url(end):
 
 def get_request():
     url_list = get_url(3)
-    response = []
+    response_list = []
     for _ in url_list:
         try:
-            proxy = get_ip_proxy()
-            logging.info("request ip is: " + str(proxy))
-            request = requests.get(_, headers=headers, proxies=proxy, timeout=5, verify=False)
-            while request.status_code != 200:
-                proxy = get_ip_proxy()
-                logging.info("request ip is: " + str(proxy))
-                request = requests.get(_, headers=headers, proxies=proxy, timeout=5, verify=False)
-            response.append(request.json())
+            response = get_response(_, headers=headers, retry_count=0)
+            if response:
+                response_list.append(response.json())
         except requests.ConnectionError as e:
-            logging.info("use local ip---")
-            request = requests.get(_, headers=headers, proxies=local_proxies, timeout=10, verify=False)
-            response.append(request.json())
             logging.info(e)
-        finally:
-            logging.info(response)
-    return response
+    return response_list
 
 
 # 获取此话题下的所有微博

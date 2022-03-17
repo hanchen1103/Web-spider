@@ -6,7 +6,7 @@ import redis
 import urllib3
 
 from micro_blog.config import local_proxies
-from micro_blog.get_ip import get_ip_proxy
+from micro_blog.get_ip import get_ip_proxy, get_response
 from micro_blog.get_request import dump_json_get_url
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -45,44 +45,22 @@ def get_xhr_url():
         for i in range(0, MAX_PAGE):
             current_url = api + str(i)
             try:
-                proxy = get_ip_proxy()
-                logging.info("request ip is: " + str(proxy))
-                response = requests.get(current_url, proxies=proxy, timeout=5, verify=False)
-                if response.status_code != 200:
-                    logging.error(response.text)
-                    continue
-                json_res = response.json()
-                if json_res:
+                response = get_response(current_url, headers=headers, retry_count=0)
+                if response and response.json():
+                    json_res = response.json()
                     items = json_res.get('data').get('cards')
                     if items is None or len(items) == 0:
                         break
+                    logging.info("success explain get url:" + current_url)
                     all_url.append(current_url)
-                # while response.status_code != 200:
-                #     proxy = get_ip_proxy()
-                #     logging.info("request ip is: " + str(proxy))
-                #     response = requests.get(current_url, proxies=proxy, timeout=5, verify=False)
-                #     json_res = response.json()
-                #     if json_res:
-                #         items = json_res.get('data').get('cards')
-                #         if items is None or len(items) == 0:
-                #             break
-                #         all_url.append(current_url)
-            except requests.exceptions.ConnectTimeout and requests.exceptions.ReadTimeout and \
-                   urllib3.exceptions.ConnectTimeoutError and requests.exceptions.ProxyError as e:
+            except requests.ConnectionError as e:
                 logging.error(e)
-                # logging.info("use local ip---")
-                # response = requests.get(current_url, headers=headers, proxies=local_proxies, verify=False)
-                # json_res = response.json()
-                # if json_res:
-                #     items = json_res.get('data').get('cards')
-                #     if items is None or len(items) == 0:
-                #         break
-                #     all_url.append(current_url)
             finally:
                 logging.info(current_url)
-            time.sleep(0.2)
+            time.sleep(0.5)
     # 缓存时间设置为6小时过期
     rds.setex(XHR_URL_LIST_KEY, 60 * 60 * 6, json.dumps(all_url))
+    logging.info("xhr url list is: " + str(len(all_url)))
 
 
 if __name__ == "__main__":

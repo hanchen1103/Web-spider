@@ -27,4 +27,4 @@ local_proxies = {
 
 dragonfly_ip = "https://proxyapi.horocn.com/api/v2/proxies?order_id=BQ6X1727559281466908&num=20&format=json&line_separator=win&can_repeat=yes&user_token=a40b1a65b555d28c7c0973e81680be00"
 
-retry_count = 6
+retry_count = 10

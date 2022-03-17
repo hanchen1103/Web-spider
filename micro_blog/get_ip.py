@@ -51,10 +51,9 @@ def request_ip():
 
 
 def get_ip():
-    ip_list = rds.zrangebyscore(ip_proxy_list_key, int(time.time()) - 120, time.time())
+    ip_list = rds.zrangebyscore(ip_proxy_list_key, int(time.time()) - 60, time.time())
     if not ip_list or len(ip_list) == 0:
         return '127.0.0.1:1087'
-    logging.info(ip_list)
     return random.choice(ip_list)
 
 
@@ -67,13 +66,14 @@ def get_response(url, headers, retry_count):
         logging.info("request {} ip address is: {}".format(url, str(ip_proxy)))
         response = requests.get(url, headers=headers, proxies=ip_proxy, verify=False, timeout=5)
         if response.status_code == 200:
-            logging.info(response.text)
             return response
         else:
+            logging.error(response)
             return get_response(url, headers, retry_count + 1)
     except (requests.ConnectionError, urllib3.exceptions.MaxRetryError, requests.exceptions.ProxyError
             , requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as e:
         logging.error(e)
+        time.sleep(0.3 * retry_count)
         return get_response(url, headers, retry_count + 1)
 
 
@@ -81,7 +81,7 @@ def get_ip_proxy():
     ip = get_ip()
     return {
         'http': 'http://' + ip,
-        'https': 'https://' + ip,
+        # 'https': 'https://' + ip,
     }
 
 
