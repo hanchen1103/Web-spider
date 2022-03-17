@@ -2,8 +2,11 @@ import logging
 
 import requests
 
+from micro_blog.config import local_proxies
+from micro_blog.get_ip import get_ip_proxy
+
 base_url = 'https://m.weibo.cn/api/container/getIndex?containerid=100103type%3D38%26q%3D%E8%BF%94%E4%B9%A1%E5%B0%B1' \
-           '%E4%B8%9A%26t%3D0&page_type=searchall&page= '
+           '%E4%B8%9A%26t%3D0&page_type=searchall&page='
 
 headers = {
     'authority': 'm.weibo.cn',
@@ -29,13 +32,21 @@ def get_request():
     response = []
     for _ in url_list:
         try:
-            request = requests.get(_, headers=headers)
-            if request.status_code == 200:
-                response.append(request.json())
-            else:
-                continue
+            proxy = get_ip_proxy()
+            logging.info("request ip is: " + str(proxy))
+            request = requests.get(_, headers=headers, proxies=proxy, timeout=5, verify=False)
+            while request.status_code != 200:
+                proxy = get_ip_proxy()
+                logging.info("request ip is: " + str(proxy))
+                request = requests.get(_, headers=headers, proxies=proxy, timeout=5, verify=False)
+            response.append(request.json())
         except requests.ConnectionError as e:
-            logging.error(e)
+            logging.info("use local ip---")
+            request = requests.get(_, headers=headers, proxies=local_proxies, timeout=10, verify=False)
+            response.append(request.json())
+            logging.info(e)
+        finally:
+            logging.info(response)
     return response
 
 
@@ -50,4 +61,9 @@ def dump_json_get_url():
                 card_list = j.get('card_group')
                 for k in card_list:
                     scheme_list.append(k.get('scheme'))
+    logging.info(scheme_list)
     return scheme_list
+
+
+if __name__ == "__main__":
+    print(len(dump_json_get_url()))

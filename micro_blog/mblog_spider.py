@@ -8,6 +8,7 @@ from pymysql.converters import escape_string
 
 from micro_blog.DTO import User, Page_info, Status
 from micro_blog.explain_url import rds, headers
+from micro_blog.get_ip import get_ip, get_ip_proxy
 from micro_blog.single_blog import BLOG_URL_LIST, request_and_explain_blog
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -62,7 +63,9 @@ def request_blog_and_explain():
             continue
         status_url = status_origin_url + mblog_id
         try:
-            response = requests.get(status_url, headers=headers)
+            proxy = get_ip_proxy()
+            logging.info("request ip is: " + str(proxy))
+            response = requests.get(status_url, headers=headers, proxies=proxy)
             if response.status_code != 200:
                 continue
             json_res = response.json()
@@ -109,7 +112,7 @@ def request_blog_and_explain():
                               escape_string(status.page_info), escape_string(status.pics))
         except requests.ConnectionError as e:
             logging.error(e)
-        time.sleep(3)
+        time.sleep(0.2)
 
 
 if __name__ == "__main__":

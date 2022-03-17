@@ -2,11 +2,11 @@ import json.decoder
 import logging
 import time
 
-import pymysql
 import requests
 from pymysql.converters import escape_string
 
 from micro_blog.DTO import Comments, User
+from micro_blog.get_ip import get_ip_proxy
 from micro_blog.mblog_spider import cursor, conn
 from spider_jingdong import headers
 
@@ -38,7 +38,9 @@ def request_comment_url():
     mid_list = get_mid_list()
     for i in mid_list:
         comment_url = comment_base_url.format(i, i)
-        response = requests.get(comment_url, headers=headers)
+        proxy = get_ip_proxy()
+        logging.info("request ip is: " + str(proxy))
+        response = requests.get(comment_url, headers=headers, proxies=proxy)
         if response.status_code != 200:
             continue
         logging.info(comment_url + "\n" + response.text)
@@ -55,7 +57,7 @@ def request_comment_url():
             if max_id is None or max_id == '0':
                 break
             next_comment_url = comment_next_url.format(i, i, max_id)
-            next_response = requests.get(next_comment_url, headers=headers)
+            next_response = requests.get(next_comment_url, headers=headers, proxies=get_ip_proxy())
             logging.info(next_comment_url + "\n" + response.text)
             if next_response.status_code != 200 or next_response.json() is None:
                 break

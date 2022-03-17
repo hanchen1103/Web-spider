@@ -4,6 +4,7 @@ import time
 import requests
 
 from micro_blog.explain_url import rds, get_xhr_url, XHR_URL_LIST_KEY, headers
+from micro_blog.get_ip import get_ip_proxy
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -25,6 +26,8 @@ def request_and_explain_blog():
     blog_url = set()
     for _ in xhr_list:
         try:
+            proxy = get_ip_proxy()
+            logging.info("request ip is: " + str(proxy))
             response = requests.get(_, headers=headers)
             if response.status_code != 200:
                 continue
@@ -40,10 +43,10 @@ def request_and_explain_blog():
                     if i.get('scheme') and CONTAIN_STRING in i.get('scheme'):
                         logging.info(i.get('scheme'))
                         blog_url.add(i.get('scheme'))
-                time.sleep(2)
-        except requests.ConnectionError as e:
+                time.sleep(0.2)
+        except requests.ConnectionError and requests.exceptions.ReadTimeout as e:
             logging.error(e)
-    rds.setex(BLOG_URL_LIST, 60 * 60 * 6, json.dumps(list(blog_url)))
+    rds.setex(BLOG_URL_LIST, 60 * 60 * 16, json.dumps(list(blog_url)))
     return blog_url
 
 

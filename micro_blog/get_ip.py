@@ -3,12 +3,14 @@ import logging
 import random
 import time
 
+import redis
 import requests
 
-from micro_blog.config import bin_ip_url, proxy_cloucd_headers, get_ip_url, proxy_url, ip_proxy_list_key
-from micro_blog.explain_url import rds
+from micro_blog.config import bin_ip_url, proxy_cloucd_headers, get_ip_url, proxy_url, ip_proxy_list_key, dragonfly_ip
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+rds = redis.StrictRedis(host='127.0.0.1', port=6379, db=3, decode_responses=True)
 
 
 def get_ip_proxies(count):
@@ -20,17 +22,20 @@ def verify_ip_useful(ip):
     if not ip or ip == '':
         return False
     try:
-        url = str.format(proxy_url, ip)
         response = requests.get(bin_ip_url, headers=proxy_cloucd_headers,
-                                proxies={'http': url, 'https': url}).text
-        json_res = json.loads(response)
-    except requests.ConnectionError as ex:
+                                proxies={'http': 'http://' + ip, 'https': 'https://' + ip}).json()
+    except requests.ConnectionError and json.decoder.JSONDecodeError as ex:
         logging.error(ex)
         return False
     logging.info("ip: " + ip + " approved")
     rds.lpush(ip_proxy_list_key, ip)
-    rds.setex(ip, 3 * 60, '1')
-    return ip == json_res.get('origin')
+    rds.setex(ip, 1 * 60, '1')
+    return ip.split(":")[0] == response.get('origin')
+
+
+def rm_ip(ip):
+    rds.lrem(ip_proxy_list_key, 1, ip)
+    rds.delete(ip)
 
 
 def request_ip():
@@ -42,16 +47,33 @@ def request_ip():
 
 
 def get_ip():
-    list_len = rds.llen(ip_proxy_list_key)
-    ip = rds.lindex(ip_proxy_list_key, random.randint(0, list_len - 1))
-    while rds.get(ip) is None:
-        ip = rds.lrem(ip_proxy_list_key, list_len - 1, ip)
-    return ip
+    ip = rds.lindex(ip_proxy_list_key, random.randint(1, rds.llen(ip_proxy_list_key) - 1))
+    while ip and rds.get(str(ip).strip('\'')) is None:
+        logging.info("redis delete ip is: " + ip)
+        rds.lrem(ip_proxy_list_key, 1, ip)
+        ip = rds.lindex(ip_proxy_list_key, random.randint(0, rds.llen(ip_proxy_list_key) - 1))
+    return ip.strip('\'')
 
 
+def get_ip_proxy():
+    ip = get_ip()
+    return {
+        'http': 'http://' + ip,
+        'https': 'https://' + ip,
+    }
+
+
+def get_dragonfly_ip():
+    response = requests.get(dragonfly_ip, headers=proxy_cloucd_headers, timeout=3).json()
+    if response:
+        data_list = response.get("data")
+        for i in data_list:
+            ip = i.get("host") + ':' + i.get("port")
+            print(ip)
+            print(verify_ip_useful(ip))
+
+def replenish_ip_pool():
+    
 if __name__ == "__main__":
-    while True:
-        if rds.llen(ip_proxy_list_key) < 100:
-            request_ip()
-        logging.info("ip pool size is -------:", rds.llen(ip_proxy_list_key))
-        time.sleep(30)
+
+    get_dragonfly_ip()
