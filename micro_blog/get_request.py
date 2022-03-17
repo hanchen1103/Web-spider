@@ -2,8 +2,7 @@ import logging
 
 import requests
 
-from micro_blog.config import local_proxies
-from micro_blog.get_ip import get_ip_proxy, get_response
+from micro_blog.get_ip import get_response
 
 base_url = 'https://m.weibo.cn/api/container/getIndex?containerid=100103type%3D38%26q%3D%E8%BF%94%E4%B9%A1%E5%B0%B1' \
            '%E4%B8%9A%26t%3D0&page_type=searchall&page='

@@ -8,8 +8,8 @@ from pymysql.converters import escape_string
 
 from micro_blog.DTO import User, Page_info, Status
 from micro_blog.config import proxy_cloucd_headers
-from micro_blog.explain_url import rds, headers
-from micro_blog.get_ip import get_ip, get_ip_proxy, get_response
+from micro_blog.explain_url import rds
+from micro_blog.get_ip import get_response
 from micro_blog.single_blog import BLOG_URL_LIST, request_and_explain_blog
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

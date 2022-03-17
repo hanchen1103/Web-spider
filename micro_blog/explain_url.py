@@ -3,10 +3,8 @@ import logging
 import time
 import requests
 import redis
-import urllib3
 
-from micro_blog.config import local_proxies
-from micro_blog.get_ip import get_ip_proxy, get_response
+from micro_blog.get_ip import get_response
 from micro_blog.get_request import dump_json_get_url
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -3,8 +3,6 @@ import logging
 import random
 import threading
 import time
-from threading import Thread
-
 import redis
 import requests
 import urllib3

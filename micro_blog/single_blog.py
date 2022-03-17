@@ -4,7 +4,7 @@ import time
 import requests
 
 from micro_blog.config import proxy_cloucd_headers
-from micro_blog.explain_url import rds, get_xhr_url, XHR_URL_LIST_KEY, headers
+from micro_blog.explain_url import rds, get_xhr_url, XHR_URL_LIST_KEY
 from micro_blog.get_ip import get_response
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

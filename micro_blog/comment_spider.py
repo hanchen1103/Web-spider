@@ -1,14 +1,16 @@
-import json.decoder
 import logging
 import time
 
-import requests
+import redis
 from pymysql.converters import escape_string
 
 from micro_blog.DTO import Comments, User
-from micro_blog.get_ip import get_ip_proxy
+from micro_blog.config import proxy_cloucd_headers
+from micro_blog.get_ip import get_response
 from micro_blog.mblog_spider import cursor, conn
-from spider_jingdong import headers
+
+rds = redis.StrictRedis(host='127.0.0.1', port=6379, db=2, decode_responses=True)
+
 
 comment_base_url = 'https://m.weibo.cn/comments/hotflow?id={}&mid={}&max_id_type=0'
 
@@ -24,6 +26,7 @@ def get_mid_list():
     res = set()
     for i in result:
         res.add(i[0])
+    logging.info(res)
     return res
 
 
@@ -38,30 +41,27 @@ def request_comment_url():
     mid_list = get_mid_list()
     for i in mid_list:
         comment_url = comment_base_url.format(i, i)
-        proxy = get_ip_proxy()
-        logging.info("request ip is: " + str(proxy))
-        response = requests.get(comment_url, headers=headers, proxies=proxy)
-        if response.status_code != 200:
+        if rds.get(comment_url) is not None:
             continue
-        logging.info(comment_url + "\n" + response.text)
-        try:
+        rds.setex(comment_url, 60 * 60 * 10, '1')
+        response = get_response(comment_url, headers=proxy_cloucd_headers, retry_count=1)
+        if response and response.json():
             json_res = response.json()
-        except json.decoder.JSONDecodeError as e:
-            logging.error(comment_url + e)
-            continue
-        if json_res is None:
-            continue
-        explain_comment_list(json_res)
-        while json_res is not None and json_res.get("data"):
-            max_id = json_res.get("data").get("max_id")
-            if max_id is None or max_id == '0':
-                break
-            next_comment_url = comment_next_url.format(i, i, max_id)
-            next_response = requests.get(next_comment_url, headers=headers, proxies=get_ip_proxy())
-            logging.info(next_comment_url + "\n" + response.text)
-            if next_response.status_code != 200 or next_response.json() is None:
-                break
-            explain_comment_list(next_response.json())
+            explain_comment_list(json_res)
+            while json_res is not None and json_res.get("data"):
+                max_id = json_res.get("data").get("max_id")
+                if max_id is None or max_id == '0':
+                    break
+                next_comment_url = comment_next_url.format(i, i, max_id)
+                if rds.get(next_comment_url) is not None:
+                    continue
+                rds.setex(next_comment_url, 60 * 60 * 10, '1')
+                next_response = get_response(next_comment_url, headers=proxy_cloucd_headers, retry_count=1)
+                logging.info(next_comment_url + "\n" + response.text)
+                if next_response and next_response.json():
+                    explain_comment_list(next_response.json())
+                time.sleep(0.6)
+            time.sleep(0.6)
 
 
 def explain_comment_list(json_res):
